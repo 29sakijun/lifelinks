@@ -4,6 +4,7 @@ import '../providers/auth_provider.dart';
 import '../providers/data_provider.dart';
 import 'onboarding/terms_screen.dart';
 import 'home/calendar_screen.dart';
+import 'auth/auth_welcome_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -61,15 +62,11 @@ class _SplashScreenState extends State<SplashScreen> {
         );
       }
     } else {
-      print('🔵 未認証 - 匿名ログイン開始');
-      // 匿名ログイン
-      await authProvider.signInAnonymously();
-      if (!mounted) return;
-
-      // 初回登録画面へ
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const TermsScreen()));
+      print('🔵 未認証 - 認証選択画面へ');
+      // 認証選択画面へ（匿名ログイン or ログイン/サインアップ）
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const AuthWelcomeScreen()),
+      );
     }
   }
 

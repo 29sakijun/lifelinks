@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../providers/data_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../models/shift_model.dart';
 import '../../models/diary_memo_model.dart';
 import '../../models/todo_model.dart';
@@ -10,6 +11,7 @@ import '../../models/friendship_model.dart';
 import '../settings/settings_screen.dart';
 import '../salary/salary_screen.dart';
 import '../filter/filter_screen.dart';
+import '../auth/auth_selection_screen.dart';
 import '../../widgets/add_item_dialog.dart';
 import '../../widgets/calendar_item_card.dart';
 import '../../widgets/friend_item_card.dart';
@@ -252,6 +254,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   Widget build(BuildContext context) {
     final dataProvider = Provider.of<DataProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -326,6 +329,58 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
       body: Column(
         children: [
+          // 匿名ユーザー用バナー
+          if (authProvider.authService.isAnonymousUser())
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.orange[300]!, Colors.orange[400]!],
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.white, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      '匿名アカウントで利用中です。アカウントをリンクしてデータを保護しましょう',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AuthSelectionScreen(isLinkMode: true),
+                        ),
+                      );
+                    },
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.orange[700],
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: const Text(
+                      'リンク',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Container(
             margin: const EdgeInsets.all(16),
             decoration: BoxDecoration(
