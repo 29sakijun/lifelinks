@@ -7,6 +7,7 @@ import 'help_screen.dart';
 import 'terms_screen.dart';
 import 'privacy_policy_screen.dart';
 import '../shift/workplace_select_screen.dart';
+import '../auth/auth_selection_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -285,9 +286,136 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
+          
+          // ログアウトセクション
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.1),
+                  spreadRadius: 1,
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Icon(
+                        Icons.logout,
+                        color: Colors.red,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'アカウント',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.red[50],
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Icon(Icons.logout, color: Colors.red, size: 20),
+                    ),
+                    title: Text(
+                      'ログアウト',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.red[700],
+                      ),
+                    ),
+                    subtitle: Text(
+                      'アカウントからログアウト',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.red[600],
+                      ),
+                    ),
+                    trailing: Icon(Icons.arrow_forward_ios, color: Colors.red[400], size: 16),
+                    onTap: () => _showLogoutDialog(context, authProvider),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
         ],
       ),
     );
+  }
+  
+  /// ログアウト確認ダイアログ
+  Future<void> _showLogoutDialog(BuildContext context, AuthProvider authProvider) async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('ログアウト'),
+        content: const Text(
+          'ログアウトしますか？\n\n次回ログイン時に同じアカウントでログインできます。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('キャンセル'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+            child: const Text('ログアウト'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout == true && context.mounted) {
+      try {
+        // ログアウト実行
+        await authProvider.signOut();
+        
+        if (context.mounted) {
+          // ウェルカム画面に遷移
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const AuthSelectionScreen()),
+            (route) => false,
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('ログアウトに失敗しました: $e')),
+          );
+        }
+      }
+    }
   }
 
   Widget _buildSettingsItem(

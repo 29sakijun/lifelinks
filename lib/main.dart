@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
@@ -17,6 +18,12 @@ void main() async {
 
   // 日本語ロケールの初期化
   await initializeDateFormatting('ja_JP', null);
+
+  // 画面の向きを縦向きのみに固定
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
 
   runApp(const MyApp());
 }

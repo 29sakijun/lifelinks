@@ -16,6 +16,7 @@ class AuthProvider with ChangeNotifier {
   UserModel? get userProfile => _userProfile;
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _user != null;
+  AuthService get authService => _authService; // AuthServiceへのアクセスを提供
 
   AuthProvider() {
     // 初期認証状態を設定

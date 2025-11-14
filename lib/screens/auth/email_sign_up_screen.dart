@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import '../../providers/auth_provider.dart';
-import '../../services/auth_service.dart';
-import '../onboarding/nickname_screen.dart';
+import 'email_verification_screen.dart';
+import '../settings/terms_screen.dart';
+import '../settings/privacy_policy_screen.dart';
 
 /// メール/パスワードサインアップ画面
 class EmailSignUpScreen extends StatefulWidget {
@@ -20,6 +23,8 @@ class _EmailSignUpScreenState extends State<EmailSignUpScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _acceptedTerms = false;
+  bool _acceptedPrivacyPolicy = false;
 
   @override
   void dispose() {
@@ -32,6 +37,14 @@ class _EmailSignUpScreenState extends State<EmailSignUpScreen> {
   /// サインアップ処理
   Future<void> _handleSignUp() async {
     if (!_formKey.currentState!.validate()) return;
+    
+    // 利用規約とプライバシーポリシーのチェック
+    if (!_acceptedTerms || !_acceptedPrivacyPolicy) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('利用規約とプライバシーポリシーに同意してください')),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -43,24 +56,16 @@ class _EmailSignUpScreenState extends State<EmailSignUpScreen> {
       final password = _passwordController.text;
 
       // サインアップ
-      final result = await authService.signUpWithEmail(
+      await authService.signUpWithEmail(
         email: email,
         password: password,
       );
 
       if (mounted) {
-        // 確認メール送信の通知
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('確認メールを送信しました。メールを確認してください。'),
-            duration: Duration(seconds: 5),
-          ),
-        );
-
-        // ニックネーム登録画面へ
+        // メール確認待機画面へ遷移
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (context) => NicknameScreen(uid: result.user!.uid),
+            builder: (context) => const EmailVerificationScreen(),
           ),
         );
       }
@@ -241,11 +246,103 @@ class _EmailSignUpScreenState extends State<EmailSignUpScreen> {
                         },
                       ),
                       
+                      const SizedBox(height: 24),
+                      
+                      // 利用規約チェックボックス
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: _acceptedTerms,
+                            onChanged: (value) {
+                              setState(() {
+                                _acceptedTerms = value ?? false;
+                              });
+                            },
+                            activeColor: Colors.purple[700],
+                          ),
+                          Expanded(
+                            child: RichText(
+                              text: TextSpan(
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[700],
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: '利用規約',
+                                    style: TextStyle(
+                                      color: Colors.purple[700],
+                                      decoration: TextDecoration.underline,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    recognizer: TapGestureRecognizer()
+                                      ..onTap = () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => const TermsScreen(),
+                                          ),
+                                        );
+                                      },
+                                  ),
+                                  const TextSpan(text: 'に同意する'),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      // プライバシーポリシーチェックボックス
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: _acceptedPrivacyPolicy,
+                            onChanged: (value) {
+                              setState(() {
+                                _acceptedPrivacyPolicy = value ?? false;
+                              });
+                            },
+                            activeColor: Colors.purple[700],
+                          ),
+                          Expanded(
+                            child: RichText(
+                              text: TextSpan(
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[700],
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: 'プライバシーポリシー',
+                                    style: TextStyle(
+                                      color: Colors.purple[700],
+                                      decoration: TextDecoration.underline,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    recognizer: TapGestureRecognizer()
+                                      ..onTap = () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => const PrivacyPolicyScreen(),
+                                          ),
+                                        );
+                                      },
+                                  ),
+                                  const TextSpan(text: 'に同意する'),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      
                       const SizedBox(height: 32),
                       
                       // サインアップボタン
                       ElevatedButton(
-                        onPressed: _handleSignUp,
+                        onPressed: (_acceptedTerms && _acceptedPrivacyPolicy) ? _handleSignUp : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.purple[700],
                           foregroundColor: Colors.white,

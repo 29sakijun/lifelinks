@@ -7,7 +7,6 @@ import '../../providers/auth_provider.dart';
 import '../../constants/app_constants.dart';
 import '../../services/storage_service.dart';
 import 'qr_scan_screen.dart';
-import '../auth/auth_selection_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -447,71 +446,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ),
-
-            // 匿名ユーザーの場合、アカウントリンクセクションを表示
-            if (authProvider.authService.isAnonymousUser()) ...[
-              const SizedBox(height: 32),
-              const Divider(),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.orange[50],
-                  border: Border.all(color: Colors.orange[200]!),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.warning_amber_rounded,
-                      color: Colors.orange[700],
-                      size: 40,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      '匿名アカウントで利用中',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.orange[900],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'アカウントをリンクすると、データを永続的に保存し、\n複数のデバイスで利用できます',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.orange[800],
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            const AuthSelectionScreen(isLinkMode: true),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.link),
-                  label: const Text('アカウントをリンクする'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange[700],
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                ),
-              ),
-            ],
 
             const SizedBox(height: 24),
           ],
