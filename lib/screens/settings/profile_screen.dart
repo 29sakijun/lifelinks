@@ -447,7 +447,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ),
-            
+
             // 匿名ユーザーの場合、アカウントリンクセクションを表示
             if (authProvider.authService.isAnonymousUser()) ...[
               const SizedBox(height: 32),
@@ -462,9 +462,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 child: Column(
                   children: [
-                    Icon(Icons.warning_amber_rounded, 
-                      color: Colors.orange[700], 
-                      size: 40
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.orange[700],
+                      size: 40,
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -496,7 +497,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const AuthSelectionScreen(isLinkMode: true),
+                        builder: (_) =>
+                            const AuthSelectionScreen(isLinkMode: true),
                       ),
                     );
                   },
@@ -510,7 +512,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ],
-            
+
             const SizedBox(height: 24),
           ],
         ),
