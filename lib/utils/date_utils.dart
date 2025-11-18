@@ -42,38 +42,52 @@ class DateUtils {
   }
 
   // 締日から給料日までの期間を計算
+  // 基準日以降の最も近い給料日を返す
   static DateTime calculatePaymentDate({
     required DateTime baseDate,
     required int closingDay,
     required int paymentMonth,
     required int paymentDay,
   }) {
-    // 締日の計算
-    int year = baseDate.year;
-    int month = baseDate.month;
-
-    // 基準日が締日より後なら次の月の締日
-    if (baseDate.day > closingDay) {
-      if (month == 12) {
-        year++;
-        month = 1;
-      } else {
-        month++;
+    // 前月、今月、来月の締日から給料日を計算し、基準日以降の最も近い給料日を見つける
+    final candidates = <DateTime>[];
+    
+    for (int monthOffset = -1; monthOffset <= 2; monthOffset++) {
+      int targetMonth = baseDate.month + monthOffset;
+      int targetYear = baseDate.year;
+      
+      while (targetMonth < 1) {
+        targetMonth += 12;
+        targetYear--;
+      }
+      while (targetMonth > 12) {
+        targetMonth -= 12;
+        targetYear++;
+      }
+      
+      // 給料日の月を計算
+      int paymentMonthValue = targetMonth + paymentMonth;
+      int paymentYear = targetYear;
+      while (paymentMonthValue > 12) {
+        paymentMonthValue -= 12;
+        paymentYear++;
+      }
+      
+      // 給料日（月末対応）
+      final lastDay = getLastDayOfMonth(paymentYear, paymentMonthValue);
+      final day = paymentDay > lastDay ? lastDay : paymentDay;
+      
+      final paymentDate = DateTime(paymentYear, paymentMonthValue, day);
+      
+      // 基準日以降の給料日のみを候補に追加
+      if (!paymentDate.isBefore(baseDate)) {
+        candidates.add(paymentDate);
       }
     }
-
-    // 給料日の月を計算
-    month += paymentMonth;
-    while (month > 12) {
-      month -= 12;
-      year++;
-    }
-
-    // 給料日（月末対応）
-    final lastDay = getLastDayOfMonth(year, month);
-    final day = paymentDay > lastDay ? lastDay : paymentDay;
-
-    return DateTime(year, month, day);
+    
+    // 候補の中から最も近い給料日を返す
+    candidates.sort();
+    return candidates.first;
   }
 
   // 2つの日時の差分を時間で返す

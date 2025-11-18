@@ -5,6 +5,9 @@ import '../models/diary_memo_model.dart';
 import '../models/todo_model.dart';
 import '../models/friendship_model.dart';
 import '../services/firestore_service.dart';
+import '../services/notification_service.dart';
+import '../utils/date_utils.dart' as app_date_utils;
+import '../utils/salary_calculator.dart';
 
 class DataProvider with ChangeNotifier {
   final FirestoreService _firestoreService = FirestoreService();
@@ -43,14 +46,20 @@ class DataProvider with ChangeNotifier {
 
   Future<void> addWorkplace(WorkplaceModel workplace) async {
     await _firestoreService.addWorkplace(workplace);
+    // 給料日通知をスケジュール
+    await _scheduleSalaryNotificationForWorkplace(workplace);
   }
 
   Future<void> updateWorkplace(WorkplaceModel workplace) async {
     await _firestoreService.updateWorkplace(workplace);
+    // 給料日通知を更新
+    await _scheduleSalaryNotificationForWorkplace(workplace);
   }
 
   Future<void> deleteWorkplace(String workplaceId) async {
     await _firestoreService.deleteWorkplace(workplaceId);
+    // 給料日通知をキャンセル
+    await NotificationService().cancelSalaryNotification(workplaceId);
   }
 
   // ==================== Shift ====================
@@ -64,14 +73,66 @@ class DataProvider with ChangeNotifier {
 
   Future<void> addShift(ShiftModel shift) async {
     await _firestoreService.addShift(shift);
+    // 給料日通知を更新
+    print('🔵 シフト追加後の給料日通知更新チェック');
+    print('   - workplaceId: ${shift.workplaceId}');
+    print('   - _workplaces.length: ${_workplaces.length}');
+    if (shift.workplaceId != null && _workplaces.isNotEmpty) {
+      try {
+        final workplace = _workplaces.firstWhere(
+          (w) => w.id == shift.workplaceId,
+        );
+        print('   - 勤務先が見つかりました: ${workplace.name}');
+        await _scheduleSalaryNotificationForWorkplace(workplace);
+      } catch (e) {
+        print('⚠️ 給料日通知の更新をスキップ: 勤務先が見つかりません ($e)');
+      }
+    } else {
+      print('⚠️ 給料日通知をスキップ: workplaceId=${shift.workplaceId}, workplaces=${_workplaces.length}');
+    }
   }
 
   Future<void> updateShift(ShiftModel shift) async {
     await _firestoreService.updateShift(shift);
+    // 給料日通知を更新
+    print('🔵 シフト更新後の給料日通知更新チェック');
+    print('   - workplaceId: ${shift.workplaceId}');
+    print('   - _workplaces.length: ${_workplaces.length}');
+    if (shift.workplaceId != null && _workplaces.isNotEmpty) {
+      try {
+        final workplace = _workplaces.firstWhere(
+          (w) => w.id == shift.workplaceId,
+        );
+        print('   - 勤務先が見つかりました: ${workplace.name}');
+        await _scheduleSalaryNotificationForWorkplace(workplace);
+      } catch (e) {
+        print('⚠️ 給料日通知の更新をスキップ: 勤務先が見つかりません ($e)');
+      }
+    } else {
+      print('⚠️ 給料日通知をスキップ: workplaceId=${shift.workplaceId}, workplaces=${_workplaces.length}');
+    }
   }
 
   Future<void> deleteShift(String shiftId) async {
-    await _firestoreService.deleteShift(shiftId);
+    // 削除前にシフト情報を取得
+    try {
+      final shift = _shifts.firstWhere((s) => s.id == shiftId);
+      await _firestoreService.deleteShift(shiftId);
+      // 給料日通知を更新
+      if (shift.workplaceId != null && _workplaces.isNotEmpty) {
+        try {
+          final workplace = _workplaces.firstWhere(
+            (w) => w.id == shift.workplaceId,
+          );
+          await _scheduleSalaryNotificationForWorkplace(workplace);
+        } catch (e) {
+          print('⚠️ 給料日通知の更新をスキップ: 勤務先が見つかりません');
+        }
+      }
+    } catch (e) {
+      print('⚠️ シフトが見つかりません: $e');
+      await _firestoreService.deleteShift(shiftId);
+    }
   }
 
   // ==================== DiaryMemo ====================
@@ -221,6 +282,113 @@ class DataProvider with ChangeNotifier {
     final friendIds = _friendships.map((f) => f.friendId).toList();
     if (friendIds.isNotEmpty) {
       loadFriendsPublicData(friendIds);
+    }
+    
+    // 給料日通知を更新（データ読み込み後に実行）
+    Future.delayed(const Duration(seconds: 2), () {
+      updateSalaryNotifications();
+    });
+  }
+
+  // ==================== 給料日通知 ====================
+
+  /// すべての勤務先の給料日通知を更新
+  Future<void> updateSalaryNotifications() async {
+    print('🔵 給料日通知を更新中...');
+    
+    for (final workplace in _workplaces) {
+      await _scheduleSalaryNotificationForWorkplace(workplace);
+    }
+    
+    print('✅ 給料日通知の更新完了');
+  }
+
+  /// 特定の勤務先の給料日通知をスケジュール
+  Future<void> _scheduleSalaryNotificationForWorkplace(
+    WorkplaceModel workplace,
+  ) async {
+    print('🔵 給料日通知のスケジュール開始: ${workplace.name}');
+    try {
+      final now = DateTime.now();
+      print('   - 現在日時: $now');
+      
+      // 次の給料日を計算（未来の最も近い給料日）
+      final targetPaymentDate = app_date_utils.DateUtils.calculatePaymentDate(
+        baseDate: now,
+        closingDay: workplace.closingDay,
+        paymentMonth: workplace.paymentMonth,
+        paymentDay: workplace.paymentDay,
+      );
+
+      // 給料日から対象締日期間を逆算
+      // 給料日 = 締日の月 + paymentMonth
+      // なので、締日 = 給料日の月 - paymentMonth
+      int closingMonth = targetPaymentDate.month - workplace.paymentMonth;
+      int closingYear = targetPaymentDate.year;
+      while (closingMonth < 1) {
+        closingMonth += 12;
+        closingYear--;
+      }
+      
+      // 月末締めの場合は、その月の最終日を使用
+      final actualClosingDay = workplace.closingDay > 28 
+          ? app_date_utils.DateUtils.getLastDayOfMonth(closingYear, closingMonth)
+          : workplace.closingDay;
+      final closingDate = DateTime(closingYear, closingMonth, actualClosingDay);
+
+      // 前回の締日を計算（前月の締日）
+      int previousClosingMonth = closingMonth - 1;
+      int previousClosingYear = closingYear;
+      if (previousClosingMonth < 1) {
+        previousClosingMonth = 12;
+        previousClosingYear--;
+      }
+      final previousActualClosingDay = workplace.closingDay > 28
+          ? app_date_utils.DateUtils.getLastDayOfMonth(previousClosingYear, previousClosingMonth)
+          : workplace.closingDay;
+      final previousClosingDate = DateTime(
+        previousClosingYear,
+        previousClosingMonth,
+        previousActualClosingDay,
+      );
+
+      // 締日期間の開始日（前回の締日の翌日）と終了日（今回の締日）
+      final periodStart = previousClosingDate.add(const Duration(days: 1));
+      final periodEnd = closingDate.add(const Duration(days: 1)); // 締日を含むため翌日を使用
+
+      // 期間内のシフトを取得
+      final relevantShifts = _shifts.where((shift) {
+        if (shift.workplaceId != workplace.id) return false;
+        
+        final shiftDate = shift.date;
+        return !shiftDate.isBefore(periodStart) && shiftDate.isBefore(periodEnd);
+      }).toList();
+
+      // 給料見込み額を計算
+      double estimatedSalary = 0.0;
+      for (final shift in relevantShifts) {
+        estimatedSalary += SalaryCalculator.calculateShiftSalary(
+          shift: shift,
+          workplace: workplace,
+        );
+      }
+
+      print('💰 勤務先: ${workplace.name}');
+      print('   - 給料日: $targetPaymentDate');
+      print('   - 対象期間: $periodStart 〜 $closingDate');
+      print('   - 見込み額: ¥${estimatedSalary.toInt()}');
+      print('   - 対象シフト: ${relevantShifts.length}件');
+
+      // 通知をスケジュール
+      await NotificationService().scheduleSalaryNotification(
+        workplaceId: workplace.id,
+        paymentDate: targetPaymentDate,
+        workplaceName: workplace.name,
+        estimatedSalary: estimatedSalary.toInt(),
+      );
+    } catch (e, stackTrace) {
+      print('⚠️ 給料日通知のスケジュールに失敗: $e');
+      print('   スタックトレース: $stackTrace');
     }
   }
 }
